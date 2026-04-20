@@ -6,13 +6,19 @@ import random
 app = Flask(__name__)
 CORS(app)
 
-# ✅ STEP 2: define route
+# ✅ STEP 2: HEALTH CHECK (VERY IMPORTANT)
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({"status": "ok"})
+
+# ✅ STEP 3: PREDICT API
 @app.route('/predict', methods=['POST'])
 def predict():
     data = request.json
-    url = data['url']
+    url = data.get('url', '')
 
-    if "@" in url or "login" in url or "verify" in url:
+    # Simple logic (you can replace later with ML model)
+    if "@" in url or "login" in url or "verify" in url or "secure" in url:
         result = "Phishing"
         risk_score = random.randint(70, 95)
         confidence = random.randint(80, 98)
@@ -27,6 +33,6 @@ def predict():
         "confidence": confidence
     })
 
-# ✅ STEP 3: run app
+# ✅ STEP 4: RUN APP (LOCAL ONLY)
 if __name__ == "__main__":
     app.run(debug=True)

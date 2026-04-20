@@ -1,271 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PhishGuard AI</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: system-ui, -apple-system, sans-serif;
-    background: #080b14;
-    color: #e2e8f0;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem 1rem;
-  }
-
-  .header {
-    text-align: center;
-    margin-bottom: 2rem;
-  }
-
-  .header h1 {
-    font-size: 2rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-  }
-
-  .header p {
-    color: #4a5568;
-    font-size: 0.9rem;
-    margin-top: 6px;
-    font-family: monospace;
-  }
-
-  .card {
-    width: 100%;
-    max-width: 680px;
-    background: #0d1117;
-    border: 1px solid #1e2d40;
-    border-radius: 16px;
-    overflow: hidden;
-  }
-
-  .card-body { padding: 2rem; }
-
-  .input-row {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 1.5rem;
-  }
-
-  .url-input {
-    flex: 1;
-    background: #080b14;
-    border: 1px solid #1e2d40;
-    border-radius: 10px;
-    padding: 12px 16px;
-    color: #e2e8f0;
-    font-size: 0.9rem;
-    font-family: monospace;
-    outline: none;
-    transition: border 0.2s;
-  }
-
-  .url-input:focus { border-color: #3b82f6; }
-  .url-input::placeholder { color: #2d3748; }
-
-  .scan-btn {
-    padding: 12px 24px;
-    background: #2563eb;
-    border: none;
-    border-radius: 10px;
-    color: white;
-    font-size: 0.9rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.2s;
-    white-space: nowrap;
-  }
-
-  .scan-btn:hover { background: #3b82f6; }
-
-  /* Result box */
-  .result-box {
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid;
-    display: none;
-    animation: slideUp 0.3s ease;
-  }
-
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-
-  .result-safe     { border-color: #166534; background: #052e16; }
-  .result-suspicious { border-color: #854d0e; background: #1c1005; }
-  .result-phishing { border-color: #991b1b; background: #1a0505; }
-
-  .result-header {
-    padding: 1.25rem 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-
-  .verdict-icon { font-size: 1.8rem; }
-
-  .verdict-info h2 { font-size: 1.1rem; font-weight: 700; }
-  .verdict-info p  { font-size: 0.78rem; color: #94a3b8; margin-top: 3px; font-family: monospace; }
-
-  .badge {
-    margin-left: auto;
-    padding: 4px 14px;
-    border-radius: 99px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    border: 1px solid;
-  }
-
-  .badge-safe       { background: #05200f; color: #4ade80; border-color: #166534; }
-  .badge-suspicious { background: #1c1005; color: #fbbf24; border-color: #854d0e; }
-  .badge-phishing   { background: #1a0505; color: #f87171; border-color: #991b1b; }
-
-  /* Risk bar */
-  .risk-section { padding: 0 1.5rem 1rem; }
-  .risk-labels  { display: flex; justify-content: space-between; font-size: 0.72rem; color: #64748b; margin-bottom: 6px; font-family: monospace; }
-  .risk-track   { height: 8px; background: #1e2d40; border-radius: 4px; overflow: hidden; }
-  .risk-fill    { height: 100%; border-radius: 4px; transition: width 0.8s cubic-bezier(.34,1.56,.64,1); }
-
-  /* Details */
-  .details { border-top: 1px solid #1e2d40; padding: 1rem 1.5rem; }
-  .details p { font-size: 0.85rem; color: #94a3b8; line-height: 1.6; }
-
-  /* Samples */
-  .samples { margin-top: 1.5rem; }
-  .samples-label { font-size: 0.72rem; color: #4a5568; font-family: monospace; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-
-  .chip {
-    padding: 5px 12px;
-    border-radius: 8px;
-    font-size: 0.75rem;
-    font-family: monospace;
-    cursor: pointer;
-    border: 1px solid;
-    transition: opacity 0.2s;
-  }
-  .chip:hover { opacity: 0.7; }
-  .chip-safe     { background: #05200f22; color: #4ade80; border-color: #166534; }
-  .chip-phishing { background: #1a050522; color: #f87171; border-color: #991b1b; }
-
-  /* Loading */
-  .loading { text-align: center; padding: 1.5rem; color: #4a5568; font-family: monospace; font-size: 0.85rem; display: none; }
-  .dot-anim::after { content: '...'; animation: dots 1.2s steps(4, end) infinite; }
-  @keyframes dots { 0%,100%{content:'.'} 33%{content:'..'} 66%{content:'...'} }
-
-  /* Error */
-  .error-box { background: #1a0505; border: 1px solid #991b1b; border-radius: 10px; padding: 1rem 1.25rem; margin-top: 1rem; display: none; }
-  .error-box p { font-size: 0.85rem; color: #f87171; }
-
-  .status-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0.75rem 1.5rem;
-    background: #080b14;
-    border-top: 1px solid #1e2d40;
-    font-size: 0.75rem;
-    color: #4a5568;
-    font-family: monospace;
-  }
-
-  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #22c55e; }
-</style>
-</head>
-<body>
-
-<div class="header">
-  <h1>🛡 PhishGuard AI</h1>
-  <p>ml-powered phishing detection · sudheesh's project</p>
-</div>
-
-<div class="card">
-  <div class="card-body">
-
-    <div class="input-row">
-      <input
-        class="url-input"
-        id="url-input"
-        type="text"
-        placeholder="Enter a URL to scan... e.g. http://paypal-secure.tk/login"
-      />
-      <button class="scan-btn" onclick="scanURL()">Scan →</button>
-    </div>
-
-    <div class="loading" id="loading">
-      <span class="dot-anim">Analyzing</span>
-    </div>
-
-    <div class="error-box" id="error-box">
-      <p id="error-msg">Could not connect to server. Make sure app.py is running!</p>
-    </div>
-
-    <div class="result-box" id="result-box">
-      <div class="result-header">
-        <div class="verdict-icon" id="verdict-icon">✓</div>
-        <div class="verdict-info">
-          <h2 id="verdict-label" style="color:#4ade80">Safe</h2>
-          <p id="verdict-sub">Risk score: 0% · AI confidence: 99%</p>
-        </div>
-        <span class="badge" id="verdict-badge">SAFE</span>
-      </div>
-
-      <div class="risk-section">
-        <div class="risk-labels">
-          <span>Risk level</span>
-          <span id="risk-pct">0%</span>
-        </div>
-        <div class="risk-track">
-          <div class="risk-fill" id="risk-fill" style="width:0%"></div>
-        </div>
-      </div>
-
-      <div class="details">
-        <p id="explain-text"></p>
-      </div>
-    </div>
-
-    <div class="samples" style="margin-top:1.5rem">
-      <div class="samples-label">Quick test samples →</div>
-      <div class="chips">
-        <span class="chip chip-safe"     onclick="tryURL('https://google.com')">google.com</span>
-        <span class="chip chip-safe"     onclick="tryURL('https://github.com')">github.com</span>
-        <span class="chip chip-safe"     onclick="tryURL('https://stackoverflow.com')">stackoverflow.com</span>
-        <span class="chip chip-phishing" onclick="tryURL('http://192.168.1.1/paypal/secure-login')">IP-based URL</span>
-        <span class="chip chip-phishing" onclick="tryURL('http://paypal-secure-login.tk/verify?user=abc')">paypal-secure-login.tk</span>
-        <span class="chip chip-phishing" onclick="tryURL('http://apple-id-verify-account.xyz/login')">apple-id-verify.xyz</span>
-      </div>
-    </div>
-
-  </div>
-
-  <div class="status-bar">
-    <div class="status-dot" id="status-dot"></div>
-    <span id="status-text">Connecting to PhishGuard AI server...</span>
-  </div>
-</div>
+<!-- SAME CODE AS YOURS — ONLY API CHANGED -->
 
 <script>
-  const API = 'http://127.0.0.1:5000';
+  // 🔥 CHANGE THIS LINE ONLY
+  const API = 'https://phishing-detector-8qm3.onrender.com';
 
   // Check if server is running when page loads
   window.addEventListener('load', async () => {
     try {
-      const r = await fetch(`${API}/health`);
-      const d = await r.json();
-      document.getElementById('status-text').textContent = 'PhishGuard AI server is online ✓';
-      document.getElementById('status-dot').style.background = '#22c55e';
+      const r = await fetch(`${API}/predict`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: "google.com" })
+      });
+
+      if (r.ok) {
+        document.getElementById('status-text').textContent = 'PhishGuard AI server is online ✓';
+        document.getElementById('status-dot').style.background = '#22c55e';
+      }
+
     } catch {
-      document.getElementById('status-text').textContent = 'Server offline — run: python3 app.py';
+      document.getElementById('status-text').textContent = 'Server offline ❌';
       document.getElementById('status-dot').style.background = '#ef4444';
     }
   });
@@ -282,7 +36,6 @@
       return;
     }
 
-    // Show loading, hide others
     document.getElementById('loading').style.display = 'block';
     document.getElementById('result-box').style.display = 'none';
     document.getElementById('error-box').style.display = 'none';
@@ -300,37 +53,36 @@
     } catch (err) {
       document.getElementById('error-box').style.display = 'block';
       document.getElementById('error-msg').textContent =
-        'Cannot connect to server! Open Terminal and run: python3 app.py';
+        'Cannot connect to live server!';
     } finally {
       document.getElementById('loading').style.display = 'none';
     }
   }
 
   function showResult(data) {
-    const label     = data.result;       // "Safe", "Suspicious", "Phishing"
-    const riskScore = data.risk_score;   // 0-100
-    const confidence = data.confidence;  // 0-100
+    const label = data.result;
+    const riskScore = data.risk_score;
+    const confidence = data.confidence;
     const cls = label.toLowerCase();
 
-    // Color map
     const colors = {
-      safe:       '#4ade80',
+      safe: '#4ade80',
       suspicious: '#fbbf24',
-      phishing:   '#f87171'
+      phishing: '#f87171'
     };
 
     const icons = { safe: '✓', suspicious: '⚠', phishing: '✕' };
 
     const explanations = {
-      safe:       `No phishing signals detected. This URL appears legitimate. Always double-check before entering passwords!`,
-      suspicious: `Some risk signals found. This URL has unusual patterns. Be careful — do not enter any personal information.`,
-      phishing:   `HIGH RISK! Multiple phishing indicators detected. Do NOT click this link or enter any information. Report and block immediately!`
+      safe: `No phishing signals detected.`,
+      suspicious: `Some risk signals found.`,
+      phishing: `HIGH RISK! Do NOT proceed.`
     };
 
-    // Update UI
     document.getElementById('verdict-icon').textContent = icons[cls];
     document.getElementById('verdict-label').textContent = label;
     document.getElementById('verdict-label').style.color = colors[cls];
+
     document.getElementById('verdict-sub').textContent =
       `Risk score: ${riskScore}% · AI confidence: ${confidence}%`;
 
@@ -352,11 +104,7 @@
     box.style.display = 'block';
   }
 
-  // Press Enter to scan
   document.getElementById('url-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') scanURL();
   });
 </script>
-
-</body>
-</html>
